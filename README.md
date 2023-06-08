@@ -1,6 +1,6 @@
 <h2>🚀 Demo</h2>
 
-[typing-master-ruddy.vercel.app/]
+[typing-master-ruddy.vercel.app/](typing-master-ruddy.vercel.app/)
 
 <h2>🛠️ Installation Steps:</h2>
 
