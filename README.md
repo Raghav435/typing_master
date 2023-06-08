@@ -16,8 +16,6 @@
 npm install
 ```
 
-```
-
 <p>3. Now you can run client by going in client folder</p>
 
 ```
