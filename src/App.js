@@ -42,7 +42,7 @@ function App() {
     const localChecked = localStorage.getItem("checked");
     if (localChecked) setChecked(Number(localChecked));
     getRandomWords(localChecked);
-    //eslint-disable-next-line
+    
   }, []);
   const handleInput = (e) => {
     const tempInput = e.target.value;
@@ -72,7 +72,7 @@ function App() {
     current++;
 
     if (current === sentenceArr.length) {
-      // timerClearer();
+    
       restart(checked);
     }
   };
