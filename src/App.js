@@ -1,97 +1,175 @@
-import logo from "./logo.svg";
-import "./App.css";
-import React, { useState } from "react";
-import useKeyPress from "./Hooks/useKeyPress";
-import { generate } from "./Utils/words";
-import { currentTime } from "./Utils/Time";
+import { useState, useEffect, useRef } from "react";
+import randomWords from "random-words";
+const NUMB_OF_WORDS = 200;
+const SECONDS = 60;
 
 function App() {
-  const [leftPadding, setLeftPadding] = useState(
-    new Array(20).fill(" ").join("")
-  );
-  const [outgoingChars, setOutgoingChars] = useState("");
-  const [currentChar, setCurrentChar] = useState(initialWords.charAt(0));
-  const [incomingChars, setIncomingChars] = useState(initialWords.substr(1));
+  const [words, setWords] = useState([]);
+  const [countDown, setCountDown] = useState(SECONDS);
+  const [currInput, setCurrInput] = useState("");
+  const [currWordIndex, setCurrWordIndex] = useState(0);
+  const [currCharIndex, setCurrCharIndex] = useState(-1);
+  const [currChar, setCurrChar] = useState("");
+  const [correct, setCorrect] = useState(0);
+  const [incorrect, setIncorrect] = useState(0);
+  const [status, setStatus] = useState("waiting");
+  const textInput = useRef(null);
 
-  const [startTime, setStartTime] = useState();
-  const [wordCount, setWordCount] = useState(0);
-  const [wpm, setWpm] = useState(0);
+  useEffect(() => {
+    setWords(generateWords());
+  }, []);
 
-  const [accuracy, setAccuracy] = useState(0);
-  const [typedChars, setTypedChars] = useState("");
+  useEffect(() => {
+    if (status === "started") {
+      textInput.current.focus();
+    }
+  }, [status]);
 
-  useKeyPress((key) => {
-    if (!startTime) {
-      setStartTime(currentTime());
+  function generateWords() {
+    return new Array(NUMB_OF_WORDS).fill(null).map(() => randomWords());
+  }
+
+  function start() {
+    if (status === "finished") {
+      setWords(generateWords());
+      setCurrWordIndex(0);
+      setCorrect(0);
+      setIncorrect(0);
+      setCurrCharIndex(-1);
+      setCurrChar("");
     }
 
-    let updatedOutgoingChars = outgoingChars;
-    let updatedIncomingChars = incomingChars;
-    if (key === currentChar) {
-      if (leftPadding.length > 0) {
-        setLeftPadding(leftPadding.substring(1));
-      }
-      updatedOutgoingChars += currentChar;
-      setOutgoingChars(updatedOutgoingChars);
-
-      setCurrentChar(incomingChars.charAt(0));
-
-      updatedIncomingChars = incomingChars.substring(1);
-      if (updatedIncomingChars.split(" ").length < 10) {
-        updatedIncomingChars += " " + generate();
-      }
-      setIncomingChars(updatedIncomingChars);
-
-      if (incomingChars.charAt(0) === " ") {
-        setWordCount(wordCount + 1);
-        const durationInMinutes = (currentTime() - startTime) / 60000.0;
-        setWpm(((wordCount + 1) / durationInMinutes).toFixed(2));
-      }
+    if (status !== "started") {
+      setStatus("started");
+      let interval = setInterval(() => {
+        setCountDown((prevCountdown) => {
+          if (prevCountdown === 0) {
+            clearInterval(interval);
+            setStatus("finished");
+            setCurrInput("");
+            return SECONDS;
+          } else {
+            return prevCountdown - 1;
+          }
+        });
+      }, 1000);
     }
+  }
 
-    const updatedTypedChars = typedChars + key;
-    setTypedChars(updatedTypedChars);
-    setAccuracy(
-      ((updatedOutgoingChars.length * 100) / updatedTypedChars.length).toFixed(
-        2
-      )
-    );
-  });
+  function handleKeyDown({ keyCode, key }) {
+    // space bar
+    if (keyCode === 32) {
+      checkMatch();
+      setCurrInput("");
+      setCurrWordIndex(currWordIndex + 1);
+      setCurrCharIndex(-1);
+      // backspace
+    } else if (keyCode === 8) {
+      setCurrCharIndex(currCharIndex - 1);
+      setCurrChar("");
+    } else {
+      setCurrCharIndex(currCharIndex + 1);
+      setCurrChar(key);
+    }
+  }
+
+  function checkMatch() {
+    const wordToCompare = words[currWordIndex];
+    const doesItMatch = wordToCompare === currInput.trim();
+    if (doesItMatch) {
+      setCorrect(correct + 1);
+    } else {
+      setIncorrect(incorrect + 1);
+    }
+  }
+
+  function getCharClass(wordIdx, charIdx, char) {
+    if (
+      wordIdx === currWordIndex &&
+      charIdx === currCharIndex &&
+      currChar &&
+      status !== "finished"
+    ) {
+      if (char === currChar) {
+        return "has-background-success";
+      } else {
+        return "has-background-danger";
+      }
+    } else if (
+      wordIdx === currWordIndex &&
+      currCharIndex >= words[currWordIndex].length
+    ) {
+      return "has-background-danger";
+    } else {
+      return "";
+    }
+  }
 
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p className="Character">
-          <span className="Character-out">
-            {(leftPadding + outgoingChars).slice(-20)}
-          </span>
-          <span className="Character-current">{currentChar}</span>
-          <span>{incomingChars.substr(0, 20)}</span>
-        </p>
-        <h3>
-          WPM: {wpm} | ACC: {accuracy}%
-        </h3>
-        <span>
-          <a
-            className="App-link"
-            href="https://medium.com/@taingmeng/create-typing-game-with-react-hooks-usekeypress-and-faker-28bbc7919820"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Medium
-          </a>
-          |
-          <a
-            className="App-link"
-            href="https://github.com/taingmeng/typing-frenzy"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Github
-          </a>
-        </span>
-      </header>
+      <div className="section">
+        <div className="is-size-1 has-text-centered has-text-primary">
+          <h2>{countDown}</h2>
+        </div>
+      </div>
+      <div className="control is-expanded section">
+        <input
+          ref={textInput}
+          disabled={status !== "started"}
+          type="text"
+          className="input"
+          onKeyDown={handleKeyDown}
+          value={currInput}
+          onChange={(e) => setCurrInput(e.target.value)}
+        />
+      </div>
+      <div className="section">
+        <button className="button is-info is-fullwidth" onClick={start}>
+          Start
+        </button>
+      </div>
+      {status === "started" && (
+        <div className="section">
+          <div className="card">
+            <div className="card-content">
+              <div className="content">
+                {words.map((word, i) => (
+                  <span key={i}>
+                    <span>
+                      {word.split("").map((char, idx) => (
+                        <span className={getCharClass(i, idx, char)} key={idx}>
+                          {char}
+                        </span>
+                      ))}
+                    </span>
+                    <span> </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {status === "finished" && (
+        <div className="section">
+          <div className="columns">
+            <div className="column has-text-centered">
+              <p className="is-size-5">Words per minute:</p>
+              <p className="has-text-primary is-size-1">{correct}</p>
+            </div>
+            <div className="column has-text-centered">
+              <p className="is-size-5">Accuracy:</p>
+              {correct !== 0 ? (
+                <p className="has-text-info is-size-1">
+                  {Math.round((correct / (correct + incorrect)) * 100)}%
+                </p>
+              ) : (
+                <p className="has-text-info is-size-1">0%</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
